@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>禽肉检疫票与分割批次系统（虚构演示）</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231565c0'/%3E%3Cpath d='M9 21c5 1 12-2 14-9-6-1-13 2-14 9z' fill='%232e7d32'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg class="leaf" viewBox="0 0 24 24"><path d="M4 18C8 8 14 5 20 4c-1 8-5 14-14 14 2-4 5-7 9-9-4 1-8 3-11 9z" fill="#7fd490"/></svg>
+    禽肉检疫票与分割批次系统
+  </div>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <div class="actor-box">
+    <span class="role-chip" id="roleChip">—</span>
+    <select id="actorSel" title="切换当前操作人（演示）"></select>
+    <button class="btn sm ghost" id="scanBtn" style="background:#fff;color:#0d3c6e;border:0">立即扫描</button>
+  </div>
+</header>
+<main id="view"></main>
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

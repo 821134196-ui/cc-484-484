@@ -13,3 +13,9 @@ build/
 轨迹/
 录屏/
 视频/
+
+# 本系统运行时数据（SQLite 与生成的虚构票据/照片，由 seed 重建）
+market_data/
+*.db
+*.db-wal
+*.db-shm
