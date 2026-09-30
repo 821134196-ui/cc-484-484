@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>禽肉检疫票与分割批次系统</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"
+              fill="#2e7d4f"/><path d="M8 12l3 3 5-6" stroke="#fff" stroke-width="2"
+              fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <div>
+      <h1>农贸市场禽肉检疫票与分割批次系统</h1>
+      <p class="sub">验票放行 · 批次链重量守恒 · 冻结传播追溯（数据均为虚构演示）</p>
+    </div>
+  </div>
+  <div class="role-box">
+    <label for="roleSel">当前身份</label>
+    <select id="roleSel">
+      <option value="admin">市场管理员</option>
+      <option value="A01">摊主 · A01 晨鸣禽档</option>
+      <option value="A02">摊主 · A02 兴旺禽铺</option>
+      <option value="B01">摊主 · B01 鲜鸭坊</option>
+    </select>
+    <span id="roleHint" class="role-hint"></span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="arrival" class="tab active">到货验票</button>
+  <button data-tab="batches" class="tab">批次库存</button>
+  <button data-tab="cells" class="tab">冷藏格位</button>
+  <button data-tab="cuts" class="tab">分割称重</button>
+  <button data-tab="trays" class="tab">托盘标签</button>
+  <button data-tab="freeze" class="tab">抽查冻结</button>
+  <button data-tab="recall" class="tab">召回清单</button>
+  <button data-tab="waste" class="tab">废弃物台账</button>
+</nav>
+
+<main>
+  <!-- 1. 到货验票 -->
+  <section id="tab-arrival" class="panel active">
+    <div class="grid-2">
+      <div class="card">
+        <h2>到货登记 <span class="tag tag-blue">摊主</span></h2>
+        <form id="arrivalForm" class="form">
+          <div class="row"><label>检疫票号</label><input name="cert_no" required placeholder="JY20260930-109"></div>
+          <div class="row"><label>供应商代号</label><select name="supplier" id="arrivalSupplier"></select></div>
+          <div class="row"><label>品类</label>
+            <select name="category"><option>白条鸡</option><option>白条鸭</option><option>白条鹅</option><option>乳鸽</option></select></div>
+          <div class="row2">
+            <div><label>票面重量 kg</label><input name="declared_weight" type="number" step="0.1" min="0.1" required></div>
+            <div><label>归属摊位</label><select name="stall" id="arrivalStall"></select></div>
+          </div>
+          <div class="row"><label>票据有效期（天）</label><input name="valid_days" type="number" value="3" min="1"></div>
+          <button class="btn btn-blue" type="submit">登记到货（待验票）</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>验票放行入柜 <span class="tag tag-green">管理员</span></h2>
+        <p class="hint">核验检疫票有效期、票货相符与过磅重量（±2%），测温合格且非跨品类混放后入柜。</p>
+        <div id="pendingList" class="stack"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>到货批次（票据缩略条 + 重量）</h2>
+      <div id="arrivalTable"></div>
+    </div>
+    <div class="card">
+      <h2>验票与异常事件</h2>
+      <div id="eventLog" class="event-log"></div>
+    </div>
+  </section>
+
+  <!-- 2. 批次库存 -->
+  <section id="tab-batches" class="panel">
+    <div class="card">
+      <h2>批次库存与重量链路</h2>
+      <p class="hint">守恒校验：到货重量 = 批次余量 + 在架/冻结托盘 + 已售 + 待处理余料 + 废弃物。</p>
+      <div id="batchTable"></div>
+    </div>
+    <div class="card hidden" id="batchDetailCard">
+      <h2 id="batchDetailTitle"></h2>
+      <div id="batchDetail"></div>
+    </div>
+  </section>
+
+  <!-- 3. 冷藏格位 -->
+  <section id="tab-cells" class="panel">
+    <div class="card">
+      <h2>冷藏格位与实时测温 <span class="tag tag-blue">模拟探头</span></h2>
+      <p class="hint">允许温度 -4℃ ~ 4℃；超温格位在柜批次链由扫描任务自动冻结，解冻须管理员处理。</p>
+      <div id="cellGrid" class="cell-grid"></div>
+    </div>
+  </section>
+
+  <!-- 4. 分割称重 -->
+  <section id="tab-cuts" class="panel">
+    <div class="card">
+      <h2>分割称重 <span class="tag tag-blue">摊主</span></h2>
+      <div class="row" style="max-width:420px">
+        <label>来源批次</label><select id="cutBatch"></select>
+      </div>
+      <div id="cutBatchInfo"></div>
+      <form id="cutForm" class="form">
+        <div class="row"><label>托盘重量（kg，逗号分隔）</label>
+          <input name="tray_weights" placeholder="12.5, 12.0, 11.5" required></div>
+        <div class="row2">
+          <div><label>余料 kg</label><input name="remainder_weight" type="number" step="0.1" value="0"></div>
+          <div><label>废弃 kg</label><input name="waste_weight" type="number" step="0.1" value="0"></div>
+        </div>
+        <div class="row"><label>废弃原因</label><input name="waste_reason" value="分割边角料"></div>
+        <button class="btn btn-green" type="submit">提交分割（以批次余量为准，扣减并生成标签）</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>批次 → 分割 → 托盘 流向图</h2>
+      <div id="cutFlow" class="flow-wrap"></div>
+    </div>
+  </section>
+
+  <!-- 5. 托盘标签 -->
+  <section id="tab-trays" class="panel">
+    <div class="card">
+      <h2>销售托盘与标签</h2>
+      <div class="filters">
+        <select id="trayStatusFilter">
+          <option value="">全部状态</option>
+          <option value="in_stock">在架</option>
+          <option value="frozen">冻结</option>
+          <option value="sold">已售</option>
+          <option value="remainder">转余料</option>
+          <option value="waste">已废弃</option>
+        </select>
+        <button class="btn btn-ghost" id="trayRefresh">刷新</button>
+      </div>
+      <div id="trayGrid" class="tray-grid"></div>
+    </div>
+    <div class="card">
+      <h2>余料回收与返工</h2>
+      <p class="hint">余料沿用原批次链重新分割，产出重量必须守恒（余料 = 新托盘 + 废弃）。</p>
+      <div id="remainderList"></div>
+    </div>
+  </section>
+
+  <!-- 6. 抽查冻结 -->
+  <section id="tab-freeze" class="panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="admin-only">
+        <h2>市场抽查 <span class="tag tag-green">管理员</span></h2>
+        <form id="inspectionForm" class="form">
+          <div class="row"><label>抽查对象</label>
+            <select name="target"><option value="batch">批次</option><option value="tray">托盘</option></select></div>
+          <div class="row"><label>对象编号 ID</label><input name="target_id" type="number" required></div>
+          <div class="row"><label>结果</label>
+            <select name="result"><option value="pass">合格</option><option value="fail">不合格（联动冻结）</option></select></div>
+          <div class="row"><label>备注</label><input name="note" placeholder="如：挥发性盐基氮偏高"></div>
+          <button class="btn btn-blue" type="submit">提交抽查</button>
+        </form>
+        <h2 style="margin-top:20px">撤销检疫票</h2>
+        <form id="revokeForm" class="form">
+          <div class="row"><label>票号</label><input name="cert_no" required placeholder="JY20260930-104"></div>
+          <div class="row"><label>撤销原因</label><input name="reason" required placeholder="源头监测异常"></div>
+          <button class="btn btn-red" type="submit">撤销并冻结在库未售品</button>
+        </form>
+        </div>
+        <p class="stall-only small" style="margin:0">抽查、撤票与冻结/解封由市场管理员执行。<br>
+           本摊位被冻结的批次与托盘会显示红色文字原因，可在批次库存/托盘标签页查看。</p>
+      </div>
+      <div class="card">
+        <h2>冻结单与冻结范围 <span class="tag tag-blue">扫描巡检</span></h2>
+        <p class="hint">每条冻结记录均附文字原因；摊主只能查看，管理员可解封。</p>
+        <div id="freezeList" class="stack"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>抽查记录</h2>
+      <div id="inspectionList"></div>
+    </div>
+  </section>
+
+  <!-- 7. 召回清单 -->
+  <section id="tab-recall" class="panel">
+    <div class="card admin-only">
+      <h2>建立部分召回 <span class="tag tag-green">管理员</span></h2>
+      <form id="recallForm" class="form">
+        <div class="row"><label>托盘 ID 清单（逗号分隔，可跨批次）</label>
+          <input name="tray_ids" required placeholder="8, 9"></div>
+        <div class="row"><label>召回原因</label><input name="reason" required placeholder="供应商通报局部污染风险"></div>
+        <div class="row" style="align-items:flex-start"><label>勾选托盘</label>
+          <div id="recallTrayPick" class="stack" style="max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px"></div></div>
+        <button class="btn btn-red" type="submit">冻结清单内未售托盘</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>召回清单（按摊位、托盘号排序）</h2>
+      <div id="recallList" class="stack"></div>
+    </div>
+  </section>
+
+  <!-- 8. 废弃物台账 -->
+  <section id="tab-waste" class="panel">
+    <div class="card">
+      <h2>废弃物台账</h2>
+      <p class="hint">分割损耗、托盘变质、余料废弃与召回销毁均入台账；单批占比异常红色标记。</p>
+      <div id="wasteTable"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
